@@ -39,6 +39,16 @@ client.on('message', async message => {
             .then(connection => {play(connection, url)})
             .catch(error => console.log("error on join"));
     }
+
+    else if (message.content === '!asmr'){
+        let url = "https://www.youtube.com/watch?v=E74jO6QzlHA";
+        const channel = message.member.voiceChannel;
+
+        channel.join()
+            .then(connection => {play(connection, url)})
+            .catch(error => console.log("error on join"));
+    }
+
     else if (message.content === '!leave') {
         const channel = message.member.voiceChannel;
 
