@@ -57,5 +57,5 @@ client.on('message', async message => {
 client.login(auth.token);
 
 async function play(connection, url) {
-    connection.playOpusStream(await ytdl(url), { volume: 0.5 });
-  }
+    connection.playOpusStream(await ytdl(url), { volume: 0.5, bitrate: 'auto' });
+}
