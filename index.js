@@ -5,6 +5,8 @@ const ytdl = require('ytdl-core-discord');
 // Create an instance of a Discord client
 const client = new Discord.Client();
 
+var VOICE_CONNECTION = null;
+
 /**
  * The ready event is vital, it means that only _after_ this will your bot start reacting to information
  * received from Discord
@@ -21,40 +23,43 @@ client.on('message', async message => {
     if (message.content === '!ping') {
         message.channel.send('pong');
     }
-    else if (message.content.trim().substr(0,5) === '!play') {
+    else if (message.content.trim().substr(0, 5) === '!play') {
         let msg = message.content.trim().split(" ");
         let url = "https://www.youtube.com/watch?v=2WPCLda_erI";
-        try{
-            if(msg[1].length > 0){
+        try {
+            if (msg[1].length > 0) {
                 url = msg[1];
             }
-        } catch(err){
-            
+        } catch (err) {
+
         }
 
 
         const channel = message.member.voiceChannel;
 
         channel.join()
-            .then(connection => {play(connection, url)})
+            .then(connection => { VOICE_CONNECTION = connection; play(connection, url, 0.4) })
             .catch(error => console.log("error on join"));
     }
 
-    else if (message.content === '!asmr'){
+    else if (message.content === '!asmr') {
         let url = "https://www.youtube.com/watch?v=E74jO6QzlHA";
         const channel = message.member.voiceChannel;
 
         channel.join()
-            .then(connection => {play(connection, url, 1.0)})
+            .then(connection => { VOICE_CONNECTION = connection; play(connection, url); })
             .catch(error => console.log("error on join"));
     }
 
     else if (message.content === '!leave') {
-        const channel = message.member.voiceChannel;
-
-        channel.leave()
-            .then(connection => console.log(`Disconnected from ${channel.name}`))
-            .catch(error => console.log("error on leave"));
+        //const channel = message.member.voiceChannel;
+        if (VOICE_CONNECTION != null) {
+            VOICE_CONNECTION.disconnect();
+            VOICE_CONNECTION = null;
+        }
+        // channel.leave()
+        //     .then(connection => console.log(`Disconnected from ${channel.name}`))
+        //     .catch(error => console.log("error on leave"));
     }
 
 
@@ -67,7 +72,7 @@ client.on('message', async message => {
 client.login(auth.token);
 
 async function play(connection, url) {
-    connection.playOpusStream(await ytdl(url), { volume: 0.4, bitrate: 'auto' });
+    connection.playOpusStream(await ytdl(url), { volume: 2.0, bitrate: 'auto' });
 }
 
 async function play(connection, url, vol) {
