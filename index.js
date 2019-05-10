@@ -45,7 +45,7 @@ client.on('message', async message => {
         const channel = message.member.voiceChannel;
 
         channel.join()
-            .then(connection => {play(connection, url)})
+            .then(connection => {play(connection, url, 1.0)})
             .catch(error => console.log("error on join"));
     }
 
@@ -68,4 +68,8 @@ client.login(auth.token);
 
 async function play(connection, url) {
     connection.playOpusStream(await ytdl(url), { volume: 0.4, bitrate: 'auto' });
+}
+
+async function play(connection, url, vol) {
+    connection.playOpusStream(await ytdl(url), { volume: vol, bitrate: 'auto' });
 }
