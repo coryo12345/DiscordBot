@@ -45,18 +45,20 @@ client.on('message', async message => {
             url = queue.shift();
         }
 
+        if (STREAM != null){
+            STREAM.end();
+        }
+
         if (VOICE_CONNECTION == null) {
             const channel = message.member.voiceChannel;
 
             channel.join()
-                .then(connection => { VOICE_CONNECTION = connection; })
+                .then(connection => { VOICE_CONNECTION = connection; play(VOICE_CONNECTION, url, 0.4); })
                 .catch(error => console.log("error on join"));
+        } else {
+            play(VOICE_CONNECTION, url, 0.4);
         }
 
-        if (STREAM != null){
-            STREAM.end();
-        }
-        play(VOICE_CONNECTION, url, 0.4)
     }
 
     // queue || q
