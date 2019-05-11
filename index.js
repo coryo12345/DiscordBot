@@ -39,30 +39,37 @@ client.on('message', async message => {
                 url = msg[1];
                 def = false;
             }
-        } catch (err) {}
+        } catch (err) { }
 
-        if(def && queue.length > 0){
+        if (def && queue.length > 0) {
             url = queue.shift();
         }
 
-        const channel = message.member.voiceChannel;
+        if (VOICE_CONNECTION == null) {
+            const channel = message.member.voiceChannel;
 
-        channel.join()
-            .then(connection => { VOICE_CONNECTION = connection; play(connection, url, 0.4) })
-            .catch(error => console.log("error on join"));
+            channel.join()
+                .then(connection => { VOICE_CONNECTION = connection; })
+                .catch(error => console.log("error on join"));
+        }
+
+        if (STREAM != null){
+            STREAM.end();
+        }
+        play(VOICE_CONNECTION, url, 0.4)
     }
 
     // queue || q
-    else if (message.content.trim().substr(0,6) === '!queue' || message.content.trim().substr(0,2) === '!q') {
+    else if (message.content.trim().substr(0, 6) === '!queue' || message.content.trim().substr(0, 2) === '!q') {
         let msg = message.content.trim().split(" ");
         let url = "";
         try {
             if (msg[1].length > 0) {
                 url = msg[1];
             }
-        } catch (err) {}
+        } catch (err) { }
 
-        if(url != ""){
+        if (url != "") {
             queue.push(url);
         }
     }
@@ -100,9 +107,6 @@ client.on('message', async message => {
             VOICE_CONNECTION.disconnect();
             VOICE_CONNECTION = null;
         }
-        // channel.leave()
-        //     .then(connection => console.log(`Disconnected from ${channel.name}`))
-        //     .catch(error => console.log("error on leave"));
     }
 
     // help
@@ -116,13 +120,12 @@ client.on('message', async message => {
     }
 });
 
-// Log our bot in using the token from https://discordapp.com/developers/applications/me
 client.login(auth.token);
 
 async function play(connection, url, vol) {
     STREAM = connection.playOpusStream(await ytdl(url), { volume: vol, bitrate: 'auto' });
     STREAM.on('end', () => {
-        if(queue.length > 0){
+        if (queue.length > 0) {
             play(connection, queue.shift(), vol);
         }
     });
