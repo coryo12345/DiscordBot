@@ -17,6 +17,7 @@ var queue = [];
 client.on('ready', () => {
     console.log('I am ready!');
     console.log(`ID: ${client.user.username}`);
+    client.user.setGame("rip feegbot");
 });
 
 // Create an event listener for messages
