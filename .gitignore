@@ -1,4 +1,6 @@
 auth.json
+*.env
+
 # Logs
 logs
 *.log
