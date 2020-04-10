@@ -1,0 +1,15 @@
+{
+  "name": "dioarchiver",
+  "version": "1.0.0",
+  "description": "discord channel archiver",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "export $(cat .env | xargs) && node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^12.1.1"
+  }
+}
