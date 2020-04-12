@@ -1,15 +1,16 @@
 {
-  "name": "dioarchiver",
+  "name": "diobot",
   "version": "1.0.0",
-  "description": "discord channel archiver",
+  "description": "discord bot archiver",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "export $(cat .env | xargs) && node index.js"
+    "start": "node index.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^12.1.1"
+    "discord.js": "^12.1.1",
+    "dotenv": "^8.2.0"
   }
 }
