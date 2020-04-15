@@ -10,6 +10,7 @@ const server_id = '207914291909623808';
 const bot_id = '576156171715477561';
 var server = null;
 var channel = null;
+var everyone = null;
 
 var channel_manager = new Map();
 
@@ -70,8 +71,46 @@ client.on('messageReactionRemove', async (reaction, user) => {
     channel.removeUser(user);
 });
 
+client.on('channelCreate', async (chan) => {
+    let name = chane.name;
+    // create message
+    chan.send(name);
+    console.log(`plan to send message ${name}`);
+
+    // create record of channel
+    channel_manager.set(name, new mychannel(chan.id, name, chan));
+    channel_manager.get(name).updateLive();
+});
+
+client.on('channelDelete', async (chan) => {
+    let name = chan.name
+    // delete message 
+    channel.messages.fetch()
+        .then((messages) => {
+            messages.forEach(message => {
+                if(message.content.toString() === name.toString()) {
+                    // message.delete();
+                    console.log(`plan to delete message ${message.content}`);
+                } 
+            })
+        });
+
+    // delete record of channel
+    channel_manager.delete(name);
+});
+
 async function init() {
     var tmp_channels = new Map();
+
+    // store the @everyone role for later
+    server.roles.fetch()
+        .then(roles => {
+            roles.forEach(role => {
+                console.log(role);
+            })
+        }).t
+
+    process.exit(0)
 
     // get list of channels
     server.channels.cache.each(c => {
@@ -127,7 +166,7 @@ async function init_3() {
                     message.reactions.cache.each(reaction => {
                         reaction.users.fetch().then(users => {
                             users.forEach((val, key) => {
-                                console.log(`user ${val.username} reacted with ${reaction.emoji} on message ${message.content}  .`)
+                                // console.log(`user ${val.username} reacted with ${reaction.emoji} on message ${message.content}  .`)
                                 ch.addUser(val);
                             })
                         })
@@ -169,6 +208,9 @@ class mychannel {
     }
 
     updateLive() {
+        // set this to be hidden for @everyone
+        this.channel.updateOverwrite('@everyone', { 'VIEW_CHANNEL': true });
+
         // remove those who shouldn't be
         this.channel.permissionOverwrites.forEach((val, key) => {
             if (val.type === 'member' && this.users[key] === undefined) {
