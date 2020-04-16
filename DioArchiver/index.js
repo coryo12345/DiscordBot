@@ -11,6 +11,9 @@ const template_open_tag = "<p>";
 const template_close_tag = "</p>";
 const template_name_open_tag = "<span>";
 const template_name_close_tag = "</span>";
+const template_date_tag = '<span class="date">';
+
+const me = "698278298735870044";
 
 client.on('ready', () => {
     console.log('I am ready!');
@@ -24,10 +27,11 @@ client.on('message', async message => {
         // break if sent by a bot
         if (message.author.bot) return;
 
-        // archive
-        if (message.content.substring(0, 8) === '!archive') {
-            archive(message);
-        }
+        message.mentions.users.each(user => {
+            if (user.id.toString() === me){
+                archive(message);
+            }
+        });
 
     } catch (err) {
         console.log(err);
@@ -37,13 +41,14 @@ client.on('message', async message => {
 client.login(token);
 
 async function archive(message) {
+    const msg_parts = message.content.split(' ');
+    if (msg_parts[1] !== 'archive') return;
+    const count = parseInt(msg_parts[2], 10);
+    if (isNaN(count)) return;
+
     const author_id = message.author.id.toString();
     var channel = message.channel;
-    const count = parseInt(message.content.split(' ')[1], 10);
-    if (isNaN(count)) {
-        message.channel.send("Can't parse that message.");
-        return;
-    }
+
     // get approved users
     var users = require('./users.json');
 
@@ -54,7 +59,7 @@ async function archive(message) {
             good = true;
         }
     });
-    if (!good) {
+    if (!good && false) {
         channel.send("Sorry. You're not an approved user.");
         return;
     }
@@ -77,16 +82,14 @@ async function archive(message) {
 async function readMessages(channel, tmp_file_path, filename, count) {
     var stream = fs.createWriteStream(tmp_file_path, { flags: 'a' });
     // write channel name and date
-    stream.write(`<h1>${channel.name}</h1><h2>${new Date()}</h2>`);
+    stream.write(`<h1>${channel.name}</h1><h2>${new Date()}</h2><h3>Messages are in descending order.</h3>`);
 
-    console.log(Math.min(count, 10000));
     // for each message -> format and write to copy
     const messages = await messages_getter(channel, Math.min(count, 10000));
     messages.forEach(message => {
         message.author.fetch()
             .then(user => {
-                const text = `${template_open_tag}${template_name_open_tag}${user.username}${template_name_close_tag}${message.cleanContent}${template_close_tag}\n`;
-                stream.write(text);
+                stream.write(toDisplay(message, user));
             })
     });
 
@@ -141,8 +144,28 @@ async function messages_getter(channel, limit) {
         }
     }
 
-    // if (sum_messages.length >= limit) {
-    //     sum_messages = sum_messages.slice(0, limit-1);
-    // }
     return sum_messages;
 }
+
+function toDisplay(message, user) {
+    let dt = message.createdAt;
+    let msg_dt = `${dt.getMonth()}/${dt.getDay()}/${dt.getFullYear()} at ${dt.getHours()}:${addZero(dt.getMinutes())}`;
+    var text = `${template_open_tag}${template_date_tag}${msg_dt}${template_name_close_tag}${template_name_open_tag}${user.username}${template_name_close_tag}${message.cleanContent}`;
+    message.attachments.each(attachment => {
+        text += `\n${attachment.url}`;
+        let pattern = new RegExp("(.png|.jpg|.jpeg)$");
+        if(pattern.test(attachment.url)) {
+            text += `<br><img src="${attachment.url}" /><br>`
+        }
+    });
+    text += `${template_close_tag}\n`;
+
+    return text;
+}
+
+function addZero(i) {
+    if (i < 10) {
+      i = "0" + i;
+    }
+    return i;
+  }
