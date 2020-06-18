@@ -6,6 +6,8 @@ var DB_Handler = require('./DB_Handler');
 var db = new DB_Handler(new sqlite3.Database(path.resolve('./data.db')));
 db.initdb();
 
+const MESSAGE_SPLIT = '-Results-----------------------------------\n';
+
 // Create an instance of a Discord client
 const client = new Discord.Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION', 'USER'] });
 
@@ -38,6 +40,22 @@ client.on('message', async message => {
     }
 });
 
+client.on('messageReactionAdd', async (reaction, user) => {
+    if (user.bot === true) return;
+    // When we receive a reaction we check if the reaction is partial or not
+    if (reaction.message.partial) await reaction.message.fetch();
+    if (reaction.partial) await reaction.fetch();
+    updatePoll(reaction.message);
+});
+
+client.on('messageReactionRemove', async (reaction, user) => {
+    if (user.bot === true) return;
+    // When we receive a reaction we check if the reaction is partial or not
+    if (reaction.message.partial) await reaction.message.fetch();
+    if (reaction.partial) await reaction.fetch();
+    updatePoll(reaction.message);
+});
+
 async function poll(message) {
     let g_id = message.guild.id;
     let c_id = message.channel.id;
@@ -60,7 +78,7 @@ async function poll(message) {
                         const choice = js[i];
                         str += `${choice.symbol} ${choice.text} \n`;
                     }
-                    str += '-Results-----------------------------------\n';
+                    str += MESSAGE_SPLIT;
                     for (let i = 0; i < js.length; i++) {
                         const choice = js[i];
                         str += `${choice.symbol} \n`;
@@ -68,13 +86,42 @@ async function poll(message) {
                     mes.edit(str);
                     for (let i = 0; i < js.length; i++) {
                         const choice = js[i];
-                        console.log(choice.symbol);
                         mes.react(choice.symbol);
                     }
                 })
         })
-        .catch(console.error)
+        .catch(console.error);
+}
 
+async function updatePoll(message) {
+    let g_id = message.guild.id;
+    let c_id = message.channel.id;
+    let m_id = message.id;
+    var reactions = message.reactions.cache;
+    var total = 0;
+    var counts = new Map();
+    db.fetchChoices([g_id, c_id, m_id])
+        .then((choices) => {
+            choices.forEach(row => {
+                let c = reactions.get(row.symbol).count - 1; // -1 to exclude diobot
+                total += c;
+                counts.set(row.symbol, c);
+            });
+            updateResults(message, total, counts);
+        });
+
+}
+
+async function updateResults(message, total, counts) {
+    var str1 = message.cleanContent.split(MESSAGE_SPLIT)[0];
+    str1 += MESSAGE_SPLIT;
+    counts.forEach((val, key) => {
+        if (total === 0)
+            str1 += `${key} 0% \n`
+        else
+            str1 += `${key} ${Math.round(100*(val / total))}% \n`
+    });
+    message.edit(str1);
 }
 
 /**

@@ -126,19 +126,54 @@ module.exports = class DB_Handler {
                                         and message_id = ?
                             )
                     ;`,
-                    [
-                        ids[0],
-                        ids[1],
-                        ids[2]
-                    ],
-                    (err, row) => {
-                        resolve(row);
-                    })
+                        [
+                            ids[0],
+                            ids[1],
+                            ids[2]
+                        ],
+                        (err, row) => {
+                            resolve(row);
+                        })
                 });
             }
-            catch(err) {
+            catch (err) {
                 reject(err);
             }
         });
+    }
+
+    fetchChoices = (ids) => {
+        var th = this;
+        try {
+            return new Promise(function (resolve, reject) {
+                th.db.all(`
+                select
+                        answer,
+                        symbol
+                from 
+                        choice 
+                where 
+                        poll_id = 
+                        (
+                            select 
+                                    rowid 
+                            from 
+                                    poll 
+                            where 
+                                    server_id = ? 
+                                    and channel_id = ? 
+                                    and message_id = ?
+                        )
+                ;`,
+                    [ids[0], ids[1], ids[2]],
+                    (err, rows) => {
+                        resolve(rows);
+                    }
+                );
+            });
+        }
+        catch (err) {
+            reject(err);
+        }
     }
 }
