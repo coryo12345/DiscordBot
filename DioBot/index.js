@@ -1,18 +1,13 @@
-require('dotenv').config()
 const Discord = require('discord.js');
 const token = process.env.DISCORD_BOT_SECRET;
+var path = require('path');
+var sqlite3 = require('sqlite3').verbose();
+var DB_Handler = require('./DB_Handler');
+var db = new DB_Handler(new sqlite3.Database(path.resolve('./data.db')));
+db.initdb();
 
 // Create an instance of a Discord client
 const client = new Discord.Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION', 'USER'] });
-
-const channel_id = '698637760583434250';
-const server_id = '207914291909623808';
-const bot_id = '576156171715477561';
-var server = null;
-var channel = null;
-var everyone = null;
-
-var channel_manager = new Map();
 
 /**
  * The ready event is vital, it means that only _after_ this will your bot start reacting to information
@@ -22,20 +17,6 @@ client.on('ready', () => {
     console.log('I am ready!');
     console.log(`ID: ${client.user.username}`);
     client.user.setActivity("rip feegbot");
-
-    // get channel
-    client.guilds.cache.each(s => {
-        console.log(`In server:: id: ${s.id} \tname: ${s.name}`);
-        if (s.id.toString() == server_id.toString()) {
-            server = s;
-            server.channels.cache.each(c => {
-                if (c.id.toString() === channel_id.toString()) {
-                    channel = c;
-                    init();
-                }
-            });
-        }
-    });
 });
 
 // Create an event listener for messages
@@ -48,182 +29,81 @@ client.on('message', async message => {
         if (message.content === '!ping') {
             message.channel.send('pong');
         }
+
+        if (message.content.substring(0, 6) === '/poll ') {
+            poll(message);
+        }
     } catch (err) {
         console.error(err);
     }
 });
 
-client.on('messageReactionAdd', async (reaction, user) => {
-	// When we receive a reaction we check if the reaction is partial or not
-    if (reaction.message.partial) await reaction.message.fetch();
-    if (reaction.partial) await reaction.fetch();
-    let channel_name = reaction.message.content;
-    let channel = channel_manager.get(channel_name);
-    channel.addUser(user);
-});
+async function poll(message) {
+    let g_id = message.guild.id;
+    let c_id = message.channel.id;
+    try {
+        var obj = parsePoll(message.cleanContent);
+    } catch (error) {
+        console.error(error);
+        message.channel.send("I couldn't parse that request. Try again.");
+        return;
+    }
 
-client.on('messageReactionRemove', async (reaction, user) => {
-	// When we receive a reaction we check if the reaction is partial or not
-    if (reaction.message.partial) await reaction.message.fetch();
-    if (reaction.partial) await reaction.fetch();
-    let channel_name = reaction.message.content;
-    let channel = channel_manager.get(channel_name);
-    channel.removeUser(user);
-});
-
-client.on('channelCreate', async (chan) => {
-    let name = chane.name;
-    // create message
-    chan.send(name);
-    console.log(`plan to send message ${name}`);
-
-    // create record of channel
-    channel_manager.set(name, new mychannel(chan.id, name, chan));
-    channel_manager.get(name).updateLive();
-});
-
-client.on('channelDelete', async (chan) => {
-    let name = chan.name
-    // delete message 
-    channel.messages.fetch()
-        .then((messages) => {
-            messages.forEach(message => {
-                if(message.content.toString() === name.toString()) {
-                    // message.delete();
-                    console.log(`plan to delete message ${message.content}`);
-                } 
-            })
-        });
-
-    // delete record of channel
-    channel_manager.delete(name);
-});
-
-async function init() {
-    var tmp_channels = new Map();
-
-    // store the @everyone role for later
-    server.roles.fetch()
-        .then(roles => {
-            roles.forEach(role => {
-                console.log(role);
-            })
-        }).t
-
-    process.exit(0)
-
-    // get list of channels
-    server.channels.cache.each(c => {
-        if (c.type === 'text' && c.id.toString() !== channel_id.toString()) {
-            if (c.name !== 'test') return;
-            mv = new mychannel(c.id, c.name, c);
-            channel_manager.set(c.name, mv);
-        }
-    });
-
-    // map messages to real channels
-    await channel.messages.fetch()
-        .then((messages) => {
-            messages.forEach(message => {
-                // messages only from diobot
-                if (message.author.id.toString() === bot_id.toString()) {
-                    let name = message.content;
-                    // this channel doesn't exist, remove the message
-                    if (!channel_manager.has(name)) {
-                        console.log(`deleting message "${message.content}" by ${message.author.username}`);
-                        message.delete();
+    message.channel.send("Loading Poll...")
+        .then(mes => {
+            var m_id = mes.id;
+            db.newPoll([g_id, c_id, m_id], obj)
+                .then(choices => {
+                    let js = JSON.parse(choices.json);
+                    let str = obj.question + '\n';
+                    for (let i = 0; i < js.length; i++) {
+                        const choice = js[i];
+                        str += `${choice.symbol} ${choice.text} \n`;
                     }
-
-                    // remember that we have a message for this channel
-                    tmp_channels.set(name, true);
-                }
-            })
+                    str += '-Results-----------------------------------\n';
+                    for (let i = 0; i < js.length; i++) {
+                        const choice = js[i];
+                        str += `${choice.symbol} \n`;
+                    }
+                    mes.edit(str);
+                    for (let i = 0; i < js.length; i++) {
+                        const choice = js[i];
+                        console.log(choice.symbol);
+                        mes.react(choice.symbol);
+                    }
+                })
         })
-        .then(() => init_2(tmp_channels));
+        .catch(console.error)
 
 }
 
-async function init_2(tmp_channels) {
-    // add messages for channels that do not exist
-    channel_manager.forEach((val, key) => {
-        if (!tmp_channels.has(val.name)) {
-            // send message
-            console.log(`create message for channel ${val.name}`);
-            channel.send(val.name);
+/**
+ * parsePoll
+ * @param {string} str /poll "question" "choice 1" "choice 2"
+ * @returns Object { question: "question", choices: ["choice 1", "choice 2"] }
+ */
+function parsePoll(message_text) {
+    let str = message_text.substring(message_text.indexOf(" ") + 1);
+    let ar = str.split(`" "`);
+    let obj = { question: "", choices: [] };
+    for (let i = 0; i < ar.length; i++) {
+        let ch = ar[i];
+        // clean
+        if (i === 0) {
+            ch = ch.substring(1);
         }
-    })
-
-    setTimeout(init_3, 1000);
-}
-
-async function init_3() {
-    // collect user permissions
-    await channel.messages.fetch()
-        .then((messages) => {
-            messages.forEach(message => {
-                let ch = channel_manager.get(message.content);
-                if (ch !== undefined) {
-                    message.reactions.cache.each(reaction => {
-                        reaction.users.fetch().then(users => {
-                            users.forEach((val, key) => {
-                                // console.log(`user ${val.username} reacted with ${reaction.emoji} on message ${message.content}  .`)
-                                ch.addUser(val);
-                            })
-                        })
-                    })
-                }
-            })
-        })
-
-    setTimeout(init_4, 1000);
-}
-
-async function init_4() {
-    // update user permissions
-    channel_manager.forEach((val, key) => {
-        val.updateLive()
-    })
-}
-
-class mychannel {
-    constructor(id, name, channel) {
-        this.id = id;
-        this.name = name;
-        this.channel = channel;
-        this.users = new Map();
+        if (i === ar.length - 1) {
+            ch = ch.substring(0, ch.length - 1);
+        }
+        // append
+        if (i === 0) {
+            obj.question = ch;
+        }
+        else {
+            obj.choices.push(ch);
+        }
     }
-
-    addUser(user) {
-        this.users.set(user.id, user);
-        // could add here as well
-        this.channel.createOverwrite(user, { 'VIEW_CHANNEL': true });
-        console.log(`${new Date()}: Adding user ${user.username} from channel ${this.name}`)
-    }
-
-    removeUser(user) {
-        this.users.delete(user.id);
-        // could remove here as well
-        this.channel.permissionOverwrites.get(user.id).delete();
-        console.log(`${new Date()}: Removing user ${user.username} from channel ${this.name}`)
-    }
-
-    updateLive() {
-        // set this to be hidden for @everyone
-        this.channel.updateOverwrite('@everyone', { 'VIEW_CHANNEL': true });
-
-        // remove those who shouldn't be
-        this.channel.permissionOverwrites.forEach((val, key) => {
-            if (val.type === 'member' && this.users[key] === undefined) {
-                this.channel.permissionOverwrites.get(key).delete();
-            }
-        })
-
-        // add those who should be
-        this.users.forEach((val, index) => {
-            this.channel.createOverwrite(val, { 'VIEW_CHANNEL': true });
-        })
-    }
-
+    return obj;
 }
 
 client.login(token);
