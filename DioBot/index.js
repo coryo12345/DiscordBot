@@ -7,6 +7,8 @@ var db = new DB_Handler(new sqlite3.Database(path.resolve('./data.db')));
 db.initdb();
 
 const MESSAGE_SPLIT = '-Results-----------------------------------\n';
+const COLORS = ['🟥', '🟦', '🟨', '🟩'];
+const BOX_PERCENTAGE = 5;
 
 // Create an instance of a Discord client
 const client = new Discord.Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION', 'USER'] });
@@ -28,12 +30,15 @@ client.on('message', async message => {
         if (message.author.bot) return;
 
         // ping
-        if (message.content === '!ping') {
+        if (message.content === '/ping') {
             message.channel.send('pong');
         }
-
-        if (message.content.substring(0, 6) === '/poll ') {
+        else if (message.content.substring(0, 6) === '/poll ') {
             poll(message);
+        }
+        else if (message.cleanContent.indexOf('/help') >= 0) {
+            message.channel.send(`To create a poll:
+/poll "question" "option 1" "option 2" "option 3....."`);
         }
     } catch (err) {
         console.error(err);
@@ -45,7 +50,14 @@ client.on('messageReactionAdd', async (reaction, user) => {
     // When we receive a reaction we check if the reaction is partial or not
     if (reaction.message.partial) await reaction.message.fetch();
     if (reaction.partial) await reaction.fetch();
-    updatePoll(reaction.message);
+    db.isPoll([reaction.message.guild.id, reaction.message.channel.id, reaction.message.id])
+        .then(val => {
+            if (val === true)
+                updatePoll(reaction.message);
+            else
+                return
+        })
+        .catch(err => console.error(err));
 });
 
 client.on('messageReactionRemove', async (reaction, user) => {
@@ -53,7 +65,14 @@ client.on('messageReactionRemove', async (reaction, user) => {
     // When we receive a reaction we check if the reaction is partial or not
     if (reaction.message.partial) await reaction.message.fetch();
     if (reaction.partial) await reaction.fetch();
-    updatePoll(reaction.message);
+    db.isPoll([reaction.message.guild.id, reaction.message.channel.id, reaction.message.id])
+        .then(val => {
+            if (val === true)
+                updatePoll(reaction.message);
+            else
+                return
+        })
+        .catch(err => console.error(err));
 });
 
 async function poll(message) {
@@ -107,20 +126,36 @@ async function updatePoll(message) {
                 total += c;
                 counts.set(row.symbol, c);
             });
-            updateResults(message, total, counts);
+            updateResults(message, total, counts, choices);
         });
 
 }
 
-async function updateResults(message, total, counts) {
-    var str1 = message.cleanContent.split(MESSAGE_SPLIT)[0];
+async function updateResults(message, total, counts, choices) {
+    var str1 = message.cleanContent.split('\n')[0] + '\n';
+    for (let c = 0; c < choices.length; c++) {
+        const choice = choices[c];
+        let val = counts.get(choice.symbol);
+        let percent = Math.round(100 * (val / total));
+        str1 += `${choice.symbol} ${choice.answer} (${percent}%) \n`;
+    }
+    // results graph
     str1 += MESSAGE_SPLIT;
-    counts.forEach((val, key) => {
+    for (let i = 0; i < choices.length; i++) {
+        const choice = choices[i];
+        let val = counts.get(choice.symbol);
+        let color = i % COLORS.length;
+        let percent = Math.round(100 * (val / total));
+        let boxCount = Math.round(percent / BOX_PERCENTAGE);
+        colorStr = '';
+        for (let j = 0; j < boxCount; j++) {
+            colorStr += COLORS[color];
+        }
         if (total === 0)
-            str1 += `${key} 0% \n`
+            str1 += `${choice.symbol} (0%) \n`
         else
-            str1 += `${key} ${Math.round(100*(val / total))}% \n`
-    });
+            str1 += `${choice.symbol} ${colorStr} (${percent}%) \n`
+    }
     message.edit(str1);
 }
 

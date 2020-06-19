@@ -144,8 +144,8 @@ module.exports = class DB_Handler {
 
     fetchChoices = (ids) => {
         var th = this;
-        try {
-            return new Promise(function (resolve, reject) {
+        return new Promise(function (resolve, reject) {
+            try {
                 th.db.all(`
                 select
                         answer,
@@ -170,10 +170,41 @@ module.exports = class DB_Handler {
                         resolve(rows);
                     }
                 );
-            });
-        }
-        catch (err) {
-            reject(err);
-        }
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    isPoll = (ids) => {
+        var th = this;
+        return new Promise(function (resolve, reject) {
+            try {
+                th.db.get(`
+                    select
+                            rowid
+                    from
+                            poll
+                    where 
+                            server_id = ? 
+                            and channel_id = ? 
+                            and message_id = ?
+                `,
+                    [ids[0], ids[1], ids[2]],
+                    (err, row) => {
+                        if (err)
+                            reject(err);
+                        if (row !== undefined)
+                            resolve(true);
+                        else
+                            resolve(false);
+                    }
+                );
+            }
+            catch (err) {
+                reject(err);
+            }
+        })
     }
 }
