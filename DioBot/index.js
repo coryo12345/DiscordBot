@@ -8,7 +8,7 @@ db.initdb();
 
 const MESSAGE_SPLIT = '-Results-----------------------------------\n';
 const COLORS = ['🟥', '🟦', '🟨', '🟩'];
-const BOX_PERCENTAGE = 5;
+const BOX_PERCENTAGE = 10;
 
 // Create an instance of a Discord client
 const client = new Discord.Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION', 'USER'] });
@@ -39,6 +39,9 @@ client.on('message', async message => {
         else if (message.cleanContent.indexOf('/help') >= 0) {
             message.channel.send(`To create a poll:
 /poll "question" "option 1" "option 2" "option 3....."`);
+        }
+        else if (message.cleanContent === '/restart') {
+            process.exit(0);
         }
     } catch (err) {
         console.error(err);
@@ -107,6 +110,7 @@ async function poll(message) {
                         const choice = js[i];
                         mes.react(choice.symbol);
                     }
+                    message.delete()
                 })
         })
         .catch(console.error);
@@ -137,7 +141,12 @@ async function updateResults(message, total, counts, choices) {
         const choice = choices[c];
         let val = counts.get(choice.symbol);
         let percent = Math.round(100 * (val / total));
-        str1 += `${choice.symbol} ${choice.answer} (${percent}%) \n`;
+        if (total === 0) {
+            str1 += `${choice.symbol} ${choice.answer} \n`;
+        }
+        else {
+            str1 += `${choice.symbol} ${choice.answer} (${percent}%) \n`;
+        }
     }
     // results graph
     str1 += MESSAGE_SPLIT;
@@ -166,7 +175,7 @@ async function updateResults(message, total, counts, choices) {
  */
 function parsePoll(message_text) {
     let str = message_text.substring(message_text.indexOf(" ") + 1);
-    let ar = str.split(`" "`);
+    let ar = str.split(`" "`).splice(0, 19);
     let obj = { question: "", choices: [] };
     for (let i = 0; i < ar.length; i++) {
         let ch = ar[i];
