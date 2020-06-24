@@ -49,7 +49,18 @@ module.exports = class DB_Handler {
                     poll_id INTEGER,
                     answer TEXT,
                     symbol VARCHAR(255),
-                    FOREIGN KEY (poll_id) REFERENCES poll(id)
+                    FOREIGN KEY (poll_id) REFERENCES poll(rowid)
+                );
+            `);
+
+            this.db.run(`
+                CREATE TABLE IF NOT EXISTS jailed (
+                    poll_id INTEGER,
+                    user_id INTEGER,
+                    requester_id INTEGER,
+                    start_time DATETIME,
+                    end_time DATETIME,
+                    FOREIGN KEY (poll_id) REFERENCES poll(rowid)
                 );
             `);
         });
