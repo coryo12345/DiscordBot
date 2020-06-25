@@ -47,36 +47,43 @@ module.exports = class Poll {
     }
 
     static async jail(message, params) {
-        var obj = { question: params.question, choices: params.choices };
-        var g_id = message.guild.id;
-        var c_id = message.channel.id;
-        // create poll -> "jail user for reason" "yes" "no"
-        message.channel.send("Loading Poll...")
-            .then(mes => {
-                var m_id = mes.id;
-                db.newPoll([g_id, c_id, m_id], obj)
-                    .then(choices => {
-                        let js = JSON.parse(choices.json);
-                        let str = obj.question + '\n';
-                        for (let i = 0; i < js.length; i++) {
-                            const choice = js[i];
-                            str += `${choice.symbol} ${choice.text} \n`;
-                        }
-                        str += MESSAGE_SPLIT;
-                        for (let i = 0; i < js.length; i++) {
-                            const choice = js[i];
-                            str += `${choice.symbol} \n`;
-                        }
-                        mes.edit(str);
-                        for (let i = 0; i < js.length; i++) {
-                            const choice = js[i];
-                            mes.react(choice.symbol);
-                        }
-                        message.delete()
-                    })
-            })
-            .catch(console.error);
-        // TODO insert into jail table
+        return new Promise(function (resolve, reject) {
+            var obj = { question: params.question, choices: params.choices };
+            var g_id = message.guild.id;
+            var c_id = message.channel.id;
+            // create poll -> "jail user for reason" "yes" "no"
+            message.channel.send("Loading Poll...")
+                .then(mes => {
+                    var m_id = mes.id;
+                    db.newPoll([g_id, c_id, m_id], obj)
+                        .then(choices => {
+                            let js = JSON.parse(choices.json);
+                            let str = obj.question + '\n';
+                            for (let i = 0; i < js.length; i++) {
+                                const choice = js[i];
+                                str += `${choice.symbol} ${choice.text} \n`;
+                            }
+                            str += MESSAGE_SPLIT;
+                            for (let i = 0; i < js.length; i++) {
+                                const choice = js[i];
+                                str += `${choice.symbol} \n`;
+                            }
+                            mes.edit(str);
+                            for (let i = 0; i < js.length; i++) {
+                                const choice = js[i];
+                                mes.react(choice.symbol);
+                            }
+                            db.newJail([g_id, c_id, mes.id], params.user, params.requester)
+                                .catch(err => {
+                                    console.error(err);
+                                    message.channel.send('Something went wrong. Try again later.');
+                                });
+                            message.delete();
+                            resolve(mes);
+                        })
+                })
+                .catch(console.error);
+        })
     }
 
     static async updatePoll(message) {
@@ -160,9 +167,4 @@ module.exports = class Poll {
         return obj;
     }
 
-    static jailPoll(requester, user) {
-        return new Promise(function (resolve, reject) {
-
-        });
-    }
 }

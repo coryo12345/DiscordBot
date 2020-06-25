@@ -10,8 +10,10 @@ db.initdb();
 
 // jail constants
 const JAILED_ROLE_NAME = 'Jailed by DioBot';
+// TODO increase POLL_TIME
 const POLL_TIME = 1000 * 5;
 const JAIL_CHOICES = ['Yes', 'No'];
+const MIN_VOTES = 4;
 
 // Create an instance of a Discord client
 const client = new Discord.Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION', 'USER'] });
@@ -58,7 +60,6 @@ client.on('message', async message => {
 
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot === true) return;
-    // When we receive a reaction we check if the reaction is partial or not
     if (reaction.message.partial) await reaction.message.fetch();
     if (reaction.partial) await reaction.fetch();
     db.isPoll([reaction.message.guild.id, reaction.message.channel.id, reaction.message.id])
@@ -73,7 +74,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
 client.on('messageReactionRemove', async (reaction, user) => {
     if (user.bot === true) return;
-    // When we receive a reaction we check if the reaction is partial or not
     if (reaction.message.partial) await reaction.message.fetch();
     if (reaction.partial) await reaction.fetch();
     db.isPoll([reaction.message.guild.id, reaction.message.channel.id, reaction.message.id])
@@ -89,7 +89,6 @@ client.on('messageReactionRemove', async (reaction, user) => {
 // TODO on channel add set diobot_jail permissions
 
 function initJail() {
-    // get channel
     client.guilds.cache.each(s => {
         console.log(`In server:: id: ${s.id} \tname: ${s.name}`);
         checkRole(s)
@@ -101,6 +100,7 @@ function initJail() {
             .catch(console.error);
     });
     // TODO check for users that need to be unjailed
+    // TODO setTimeout for users that aren't ready yet
 }
 
 function checkRole(guild) {
@@ -154,7 +154,6 @@ function applyJailRoleToChannel(channel) {
 }
 
 function jail(message) {
-    // parse message -> requester, user, reason
     try {
         var params = parseJail(message);
     }
@@ -162,31 +161,36 @@ function jail(message) {
         console.error(err);
         message.channel.send("I couldn't parse that message.");
     }
-    Poll.jail(message, params);
-    // TODO fill out Poll.jail
-
-    // settimeout to check back
-    setTimeout(function() {checkJail(message)}, POLL_TIME);
+    Poll.jail(message, params)
+        .then(mes => {
+            setTimeout(function () { checkJailPoll(mes) }, POLL_TIME);
+        });
 }
 
-function checkJail(message) {
+function checkJailPoll(message) {
+    var yes = message.reactions.cache.get(DB_Handler.alphabet[0]).count;
+    var no = message.reactions.cache.get(DB_Handler.alphabet[1]).count;
+    console.log(yes, no);
     // TODO check reactions on message
     // TODO update jail table starttime and end time
-    if (true) {
-        var member = message.guild.members.cache.find(member => member.id === params.user.id);
-        checkRole(message.guild)
-            .then(role => {
-                member.roles.add(role, "jailed");
-            })
-            .catch(console.error);
-    }
+    // if (true) {
+    //     var member = message.guild.members.cache.find(member => member.id === params.user.id);
+    //     checkRole(message.guild)
+    //         .then(role => {
+    //             member.roles.add(role, "jailed");
+    //         })
+    //         .catch(console.error);
+    // }
+    // TODO settimeout for clearJail
+}
+
+function clearJail(g_id, c_id, m_id, u_id) {
+
 }
 
 function parseJail(message) {
     let obj = { question: "", choices: JAIL_CHOICES, requester: message.author, user: "" };
-    // user
     obj.user = message.mentions.users.values().next().value;
-    // question
     let str = message.cleanContent.trim().substring(6);
     let spc = str.indexOf(" ");
     if (spc === -1) {

@@ -218,4 +218,76 @@ module.exports = class DB_Handler {
             }
         })
     }
+
+    newJail = (ids, user, requester) => {
+        var th = this;
+        return new Promise(function (resolve, reject) {
+            try {
+                th.db.run(`
+                INSERT INTO jailed VALUES
+                (
+                    (
+                        select
+                                rowid
+                        from
+                                poll
+                        where 
+                                server_id = ? 
+                                and channel_id = ? 
+                                and message_id = ?
+                    ), 
+                    cast(? as INTEGER), 
+                    cast(? as INTEGER), 
+                    null, 
+                    null
+                );
+                `,
+                    [ids[0], ids[1], ids[2], user.id, requester.id]
+                );
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    getJail = (ids) => {
+        var th = this;
+        return new Promise(function (resolve, reject) {
+            try {
+                th.db.get(`
+                    select
+                            poll_id,
+                            user_id
+                    from
+                            jailed
+                    where 
+                            poll_id = 
+                            (
+                                select 
+                                        rowid 
+                                from 
+                                        poll 
+                                where 
+                                        server_id = ? 
+                                        and channel_id = ? 
+                                        and message_id = ?
+                            )
+                `,
+                    [ids[0], ids[1], ids[2]],
+                    (err, row) => {
+                        if (err)
+                            reject(err);
+                        if (row !== undefined)
+                            resolve(row);
+                        else
+                            resolve(false);
+                    }
+                );
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
+    }
 }
