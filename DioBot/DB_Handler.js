@@ -36,9 +36,9 @@ module.exports = class DB_Handler {
         this.db.serialize(() => {
             this.db.run(`
                 CREATE TABLE IF NOT EXISTS poll (
-                    server_id INTEGER,
-                    channel_id INTEGER,
-                    message_id INTEGER,
+                    server_id VARCHAR,
+                    channel_id VARCHAR,
+                    message_id VARCHAR,
                     question TEXT,
                     PRIMARY KEY (server_id, channel_id, message_id)
                 );
@@ -56,10 +56,11 @@ module.exports = class DB_Handler {
             this.db.run(`
                 CREATE TABLE IF NOT EXISTS jailed (
                     poll_id INTEGER,
-                    user_id INTEGER,
-                    requester_id INTEGER,
+                    user_id VARCHAR,
+                    requester_id VARCHAR,
                     start_time DATETIME,
                     end_time DATETIME,
+                    cleared BOOLEAN,
                     FOREIGN KEY (poll_id) REFERENCES poll(rowid)
                 );
             `);
@@ -75,9 +76,9 @@ module.exports = class DB_Handler {
                     th.db.run(`
                     INSERT INTO poll (server_id, channel_id, message_id, question) VALUES
                     (
-                        cast(? AS INTEGER), 
-                        cast(? AS INTEGER), 
-                        cast(? AS INTEGER),
+                        cast(? AS VARCHAR), 
+                        cast(? AS VARCHAR), 
+                        cast(? AS VARCHAR),
                         cast(? AS TEXT)
                     );`,
                         [ids[0], ids[1], ids[2], params.question]
@@ -236,10 +237,11 @@ module.exports = class DB_Handler {
                                 and channel_id = ? 
                                 and message_id = ?
                     ), 
-                    cast(? as INTEGER), 
-                    cast(? as INTEGER), 
+                    cast(? as VARCHAR), 
+                    cast(? as VARCHAR), 
                     null, 
-                    null
+                    null,
+                    false
                 );
                 `,
                     [ids[0], ids[1], ids[2], user.id, requester.id]
@@ -282,6 +284,112 @@ module.exports = class DB_Handler {
                             resolve(row);
                         else
                             resolve(false);
+                    }
+                );
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    updateJail = (ids, seconds) => {
+        var th = this;
+        return new Promise(function (resolve, reject) {
+            try {
+                th.db.run(`
+                    update
+                            jailed
+                    set
+                            start_time = datetime('now'),
+                            end_time = datetime('now', '+${seconds} seconds')
+                    where
+                            poll_id = 
+                            (
+                                select 
+                                        rowid 
+                                from 
+                                        poll 
+                                where 
+                                        server_id = ? 
+                                        and channel_id = ? 
+                                        and message_id = ?
+                            )
+                `,
+                    [ids[0], ids[1], ids[2]],
+                    (err) => {
+                        if (err) reject(err);
+                    }
+                );
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    checkUnjail = () => {
+        var th = this;
+        return new Promise(function (resolve, reject) {
+            try {
+                th.db.all(`
+                    select
+                            p.server_id,
+                            p.channel_id,
+                            p.message_id,
+                            j.user_id
+                    from
+                            jailed j,
+                            poll p
+                    where
+                            j.poll_id = p.rowid
+                            and j.end_time < datetime('now')
+                            and j.cleared = false
+                    ;
+                `,
+                    [],
+                    (err, rows) => {
+                        if (err)
+                            reject(err);
+                        else
+                            resolve(rows);
+                    }
+                );
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    clearJail = (ids) => {
+        console.log(ids);
+        var th = this;
+        return new Promise(function (resolve, reject) {
+            try {
+                th.db.run(`
+                update 
+                        jailed
+                set 
+                        cleared = true 
+                where 
+                        jailed.poll_id = 
+                        ( 
+                            select
+                                    rowid
+                            from
+                                    poll
+                            where
+                                    server_id = ?
+                                    and channel_id = ?
+                                    and message_id = ?
+                        )
+                ;`,
+                    [ids[0], ids[1], ids[2]],
+                    (err) => {
+                        if (err)
+                            reject(err);
+                        resolve();
                     }
                 );
             }

@@ -10,10 +10,14 @@ db.initdb();
 
 // jail constants
 const JAILED_ROLE_NAME = 'Jailed by DioBot';
+const CHECK_FOR_UNJAIL_TIME = 1000 * 10;
 // TODO increase POLL_TIME
 const POLL_TIME = 1000 * 5;
 const JAIL_CHOICES = ['Yes', 'No'];
-const MIN_VOTES = 4;
+// TODO set min_votes = 4
+const MIN_VOTES = 1;
+// TODO increase TIME_PER_VOTE
+const TIME_PER_VOTE = 20;
 
 // Create an instance of a Discord client
 const client = new Discord.Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION', 'USER'] });
@@ -29,14 +33,10 @@ client.on('ready', () => {
     initJail();
 });
 
-// Create an event listener for messages
 client.on('message', async message => {
-    // console.log(message.mentions.users);
     try {
-        // break if sent by a bot
         if (message.author.bot) return;
 
-        // ping
         if (message.content === '/ping') {
             message.channel.send('pong');
         }
@@ -99,8 +99,7 @@ function initJail() {
             })
             .catch(console.error);
     });
-    // TODO check for users that need to be unjailed
-    // TODO setTimeout for users that aren't ready yet
+    setInterval(checkForUnjail, CHECK_FOR_UNJAIL_TIME);
 }
 
 function checkRole(guild) {
@@ -126,7 +125,7 @@ function checkRole(guild) {
 
 function createRole(guild) {
     return new Promise(function (resolve, reject) {
-        console.log('creating role')
+        console.log(`creating role on guild ${guild.name}`);
         guild.roles.create({
             data: {
                 name: JAILED_ROLE_NAME
@@ -162,30 +161,62 @@ function jail(message) {
         message.channel.send("I couldn't parse that message.");
     }
     Poll.jail(message, params)
-        .then(mes => {
-            setTimeout(function () { checkJailPoll(mes) }, POLL_TIME);
+        .then((mes) => {
+            setTimeout(function () { checkJailPoll(mes, params) }, POLL_TIME);
         });
 }
 
-function checkJailPoll(message) {
-    var yes = message.reactions.cache.get(DB_Handler.alphabet[0]).count;
-    var no = message.reactions.cache.get(DB_Handler.alphabet[1]).count;
-    console.log(yes, no);
-    // TODO check reactions on message
-    // TODO update jail table starttime and end time
-    // if (true) {
-    //     var member = message.guild.members.cache.find(member => member.id === params.user.id);
-    //     checkRole(message.guild)
-    //         .then(role => {
-    //             member.roles.add(role, "jailed");
-    //         })
-    //         .catch(console.error);
-    // }
-    // TODO settimeout for clearJail
+function checkJailPoll(message, params) {
+    var yes = message.reactions.cache.get(DB_Handler.alphabet[0]).count - 1;
+    var no = message.reactions.cache.get(DB_Handler.alphabet[1]).count - 1;
+    var diff = yes - no;
+    if (yes + no >= MIN_VOTES && diff > 0) {
+        var member = message.guild.members.cache.find(member => member.id === params.user.id);
+        var seconds = diff * TIME_PER_VOTE;
+        db.updateJail([message.guild.id, message.channel.id, message.id], seconds)
+            .catch(err => {
+                console.error(err);
+                message.channel.send("Something went wrong with the poll. Try again later.");
+                return;
+            });
+        checkRole(message.guild)
+            .then(role => {
+                member.roles.add(role, "jailed");
+            })
+            .catch(console.error);
+    }
+    message.edit(message.content + "\n**Voting Concluded**");
 }
 
-function clearJail(g_id, c_id, m_id, u_id) {
+function checkForUnjail() {
+    db.checkUnjail()
+        .then(rows => {
+            console.log(rows)
+            rows.forEach(val => {
+                clearJail(val.server_id, val.user_id)
+                    .then(member => {
+                        db.clearJail([val.server_id, val.channel_id, val.message_id])
+                             .catch(console.err)
+                    })
+            });
+        })
+        .catch(console.error);
+}
 
+function clearJail(g_id, u_id) {
+    return new Promise(function (resolve, reject) {
+        var guild = client.guilds.cache.find(guild => guild.id == g_id);
+        if (guild === undefined) reject("can't find guild");
+        var member = guild.members.cache.find(member => member.id == u_id);
+        if (member === undefined) reject("can't find member in guild");
+        checkRole(guild)
+            .then(role => {
+                member.roles.remove(role, "jail ended")
+                    .then(resolve)
+                    .catch(console.error);
+            })
+            .catch(reject);
+    })
 }
 
 function parseJail(message) {
