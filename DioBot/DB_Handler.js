@@ -293,7 +293,7 @@ module.exports = class DB_Handler {
         });
     }
 
-    updateJail = (ids, seconds) => {
+    updateJail = (ids, seconds, user_id) => {
         var th = this;
         return new Promise(function (resolve, reject) {
             try {
@@ -302,7 +302,8 @@ module.exports = class DB_Handler {
                             jailed
                     set
                             start_time = datetime('now'),
-                            end_time = datetime('now', '+${seconds} seconds')
+                            end_time = datetime('now', '+${seconds} seconds'),
+                            user_id = ?
                     where
                             poll_id = 
                             (
@@ -316,7 +317,7 @@ module.exports = class DB_Handler {
                                         and message_id = ?
                             )
                 `,
-                    [ids[0], ids[1], ids[2]],
+                    [user_id, ids[0], ids[1], ids[2]],
                     (err) => {
                         if (err) reject(err);
                     }
@@ -363,7 +364,6 @@ module.exports = class DB_Handler {
     }
 
     clearJail = (ids) => {
-        console.log(ids);
         var th = this;
         return new Promise(function (resolve, reject) {
             try {

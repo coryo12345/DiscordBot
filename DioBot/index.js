@@ -4,7 +4,6 @@ var path = require('path');
 var sqlite3 = require('sqlite3').verbose();
 var Poll = require('./Poll');
 var DB_Handler = require('./DB_Handler');
-const { jailPoll } = require('./Poll');
 var db = new DB_Handler(new sqlite3.Database(path.resolve('./data.db')));
 db.initdb();
 
@@ -12,7 +11,7 @@ db.initdb();
 const JAILED_ROLE_NAME = 'Jailed by DioBot';
 const CHECK_FOR_UNJAIL_TIME = 1000 * 10;
 // TODO increase POLL_TIME
-const POLL_TIME = 1000 * 5;
+const POLL_TIME = 1000 * 6;
 const JAIL_CHOICES = ['Yes', 'No'];
 // TODO set min_votes = 4
 const MIN_VOTES = 1;
@@ -86,18 +85,16 @@ client.on('messageReactionRemove', async (reaction, user) => {
         .catch(err => console.error(err));
 });
 
-// TODO on channel add set diobot_jail permissions
+client.on('channelCreate', async chan => {
+    applyJailRoleToChannel(chan);
+});
 
 function initJail() {
     client.guilds.cache.each(s => {
         console.log(`In server:: id: ${s.id} \tname: ${s.name}`);
-        checkRole(s)
-            .then(role => {
-                s.channels.cache.each(chan => {
-                    applyJailRoleToChannel(chan, role);
-                });
-            })
-            .catch(console.error);
+        s.channels.cache.each((chan) => {
+            applyJailRoleToChannel(chan);
+        });
     });
     setInterval(checkForUnjail, CHECK_FOR_UNJAIL_TIME);
 }
@@ -137,17 +134,11 @@ function createRole(guild) {
     });
 }
 
-function applyJailRoleToChannel(channel, role) {
-    if (channel.type === 'text') {
-        channel.updateOverwrite(role, { SEND_MESSAGES: false });
-    }
-}
-
-function applyJailRoleToChannel(channel) {
+async function applyJailRoleToChannel(channel) {
     if (channel.type !== 'text') return;
     checkRole(channel.guild)
         .then(role => {
-            applyJailRoleToChannel(channel, role);
+            channel.updateOverwrite(role, { SEND_MESSAGES: false });
         })
         .catch(console.error);
 }
@@ -170,10 +161,16 @@ function checkJailPoll(message, params) {
     var yes = message.reactions.cache.get(DB_Handler.alphabet[0]).count - 1;
     var no = message.reactions.cache.get(DB_Handler.alphabet[1]).count - 1;
     var diff = yes - no;
-    if (yes + no >= MIN_VOTES && diff > 0) {
-        var member = message.guild.members.cache.find(member => member.id === params.user.id);
+    var requester_yes = message.reactions.cache.get(DB_Handler.alphabet[0]).users.cache.find(user => user.id === params.requester.id);
+    var vote_flip_override = false;
+    var member = message.guild.members.cache.find(member => member.id === params.user.id);
+    if((requester_yes !== undefined && yes === 1) || yes === 0) {
+        member = message.guild.members.cache.find(member => member.id === params.requester.id);
+        vote_flip_override = true;
+    }
+    if (yes + no >= MIN_VOTES && (diff > 0 || vote_flip_override === true)) {
         var seconds = diff * TIME_PER_VOTE;
-        db.updateJail([message.guild.id, message.channel.id, message.id], seconds)
+        db.updateJail([message.guild.id, message.channel.id, message.id], seconds, member.id)
             .catch(err => {
                 console.error(err);
                 message.channel.send("Something went wrong with the poll. Try again later.");
@@ -184,19 +181,27 @@ function checkJailPoll(message, params) {
                 member.roles.add(role, "jailed");
             })
             .catch(console.error);
+        if (vote_flip_override === false) {
+            message.channel.send(`<@${params.user.id}> HAS BEEN JAILED! DEMOCRACY HAS SPOKEN!`);
+        }
+        else {
+            message.channel.send(`THE TABLES HAVE TURNED ON <@${member.id}>! THEY HAVE BEEN JAILED FOR THEIR PITIFUL ATTEMPT AT TYRANNY!`);
+        }
     }
-    message.edit(message.content + "\n**Voting Concluded**");
+    else {
+        message.channel.send(`<@${params.user.id}> HAS BEEN SPARED! DEMOCRACY HAS SPOKEN!`);
+    }
+    message.edit("\n**Voting Concluded**\n" + message.content);
 }
 
 function checkForUnjail() {
     db.checkUnjail()
         .then(rows => {
-            console.log(rows)
             rows.forEach(val => {
                 clearJail(val.server_id, val.user_id)
                     .then(member => {
                         db.clearJail([val.server_id, val.channel_id, val.message_id])
-                             .catch(console.err)
+                            .catch(console.err)
                     })
             });
         })
@@ -225,10 +230,10 @@ function parseJail(message) {
     let str = message.cleanContent.trim().substring(6);
     let spc = str.indexOf(" ");
     if (spc === -1) {
-        obj.question = `Jail ${obj.user.username}?`;
+        obj.question = `Jail <@${obj.user.id}> ?`;
     }
     else {
-        obj.question = `Jail ${obj.user.username} for "${str.substring(str.indexOf(" "))}"`;
+        obj.question = `Jail <@${obj.user.id}> for "${str.substring(str.indexOf(" "))}"`;
     }
     return obj;
 }
