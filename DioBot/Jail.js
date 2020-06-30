@@ -16,11 +16,14 @@ module.exports = class Jail {
     static initJail(client) {
         client.guilds.cache.each(s => {
             console.log(`In server:: id: ${s.id} \tname: ${s.name}`);
-            s.channels.cache.each((chan) => {
-                Jail.applyJailRoleToChannel(chan);
-            });
+            Jail.checkRole(s)
+                .then(role => {
+                    s.channels.cache.each((chan) => {
+                        Jail.applyJailRoleToChannel(chan, role);
+                    });
+                });
         });
-        setInterval(function(){Jail.checkForUnjail(client)}, CHECK_FOR_UNJAIL_TIME);
+        setInterval(function () { Jail.checkForUnjail(client) }, CHECK_FOR_UNJAIL_TIME);
     }
 
     static checkRole(guild) {
@@ -58,13 +61,9 @@ module.exports = class Jail {
         });
     }
 
-    static async applyJailRoleToChannel(channel) {
+    static async applyJailRoleToChannel(channel, role) {
         if (channel.type !== 'text') return;
-        Jail.checkRole(channel.guild)
-            .then(role => {
-                channel.updateOverwrite(role, { SEND_MESSAGES: false });
-            })
-            .catch(console.error);
+        channel.updateOverwrite(role, { SEND_MESSAGES: false });
     }
 
     static jail(message) {

@@ -76,7 +76,10 @@ client.on('messageReactionRemove', async (reaction, user) => {
 });
 
 client.on('channelCreate', async chan => {
-    Jail.applyJailRoleToChannel(chan);
+    Jail.checkRole(chan.guild)
+        .then(role => {
+            Jail.applyJailRoleToChannel(chan, role);
+        })
 });
 
 client.login(token);
