@@ -7,13 +7,10 @@ var db = new DB_Handler(new sqlite3.Database(path.resolve('./data.db')));
 // jail constants
 const JAILED_ROLE_NAME = 'Jailed by DioBot';
 const CHECK_FOR_UNJAIL_TIME = 1000 * 10;
-// TODO increase POLL_TIME
-const POLL_TIME = 1000 * 6;
+const POLL_TIME = 1000 * 60 * 2; // 2 minutes
 const JAIL_CHOICES = ['Yes', 'No'];
-// TODO set min_votes = 4
-const MIN_VOTES = 1;
-// TODO increase TIME_PER_VOTE
-const TIME_PER_VOTE = 20;
+const MIN_VOTES = 4;
+const TIME_PER_VOTE = 60 * 5; // 5 minutes
 
 module.exports = class Jail {
     static initJail(client) {
