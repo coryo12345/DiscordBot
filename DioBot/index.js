@@ -4,6 +4,7 @@ var path = require('path');
 var sqlite3 = require('sqlite3').verbose();
 var Poll = require('./Poll');
 var Jail = require('./Jail');
+var RPS = require('./RPS');
 var DB_Handler = require('./DB_Handler');
 var db = new DB_Handler(new sqlite3.Database(path.resolve('./data.db')));
 db.initdb();
@@ -35,9 +36,11 @@ client.on('message', async message => {
         else if (message.cleanContent.substring(0, 6) === '/jail ') {
             Jail.jail(message);
         }
+        else if (message.mentions.users.find(user => user.id === client.user.id) !== undefined) {
+            RPS.rps(message);
+        }
         else if (message.cleanContent.indexOf('/help') >= 0) {
-            message.channel.send(`To create a poll:
-/poll "question" "option 1" "option 2" "option 3....."`);
+            message.channel.send(`To create a poll:\n/poll "question" "option 1" "option 2" "option 3....."`);
         }
         else if (message.cleanContent === '/restart') {
             process.exit(0);

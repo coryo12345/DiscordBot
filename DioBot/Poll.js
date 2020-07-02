@@ -13,7 +13,8 @@ module.exports = class Poll {
         let c_id = message.channel.id;
         try {
             var obj = Poll.parsePoll(message.cleanContent);
-        } catch (error) {
+        } 
+        catch (error) {
             console.error(error);
             message.channel.send("I couldn't parse that request. Try again.");
             return;

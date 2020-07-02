@@ -64,13 +64,43 @@ module.exports = class DB_Handler {
                     FOREIGN KEY (poll_id) REFERENCES poll(rowid)
                 );
             `);
+
+            this.db.run(`
+                CREATE TABLE IF NOT EXISTS rps_type (
+                    id INT,
+                    name TEXT,
+                    use INT
+                );
+            `);
+
+            this.db.run(`DELETE FROM rps_type;`);
+            this.db.run(`
+                INSERT INTO rps_type VALUES 
+                    (0, '✊', 1),
+                    (0, '🤛', 0),
+                    (0, '🤜', 0),
+                    (1, '✌️', 1),
+                    (1, '✂️', 0),
+                    (2, '✋', 1),
+                    (2, '🤚', 0),
+                    (2, '🖐️', 0)
+                ;
+            `);
+
+            this.db.run(`
+                CREATE TABLE IF NOT EXISTS rps (
+                    server_id VARCHAR,
+                    channel_id VARCHAR,
+                    message_id VARCHAR,
+                    rps_type_id INT
+                );
+            `);
         });
     }
 
     newPoll = (ids, params) => {
         var th = this;
         return new Promise(function (resolve, reject) {
-            // insert into db here 
             try {
                 th.db.serialize(() => {
                     th.db.run(`
@@ -390,6 +420,101 @@ module.exports = class DB_Handler {
                         if (err)
                             reject(err);
                         resolve();
+                    }
+                );
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    newRPS = (ids, guess) => {
+        var th = this;
+        return new Promise(function (resolve, reject) {
+            try {
+                th.db.run(
+                    `INSERT INTO rps VALUES (?, ?, ?, ?);`,
+                    [ids[0], ids[1], ids[2], guess],
+                    (err) => {
+                        if (err)
+                            reject(err);
+                        resolve();
+                    }
+                );
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    isRPS = (symbol) => {
+        var th = this;
+        return new Promise(function (resolve, reject) {
+            try {
+                th.db.get(`
+                        SELECT 
+                                id
+                        FROM
+                                rps_type
+                        WHERE
+                                name = cast(? as VARCHAR)
+                    `,
+                    [symbol],
+                    (err, row) => {
+                        if(err)
+                            reject(err);
+                        resolve(row);
+                    }
+                );
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    getRPSResponse = (guess) => {
+        var th = this;
+        return new Promise(function(resolve, reject) {
+            try {
+                th.db.get(
+                    `
+                        select 
+                                id,
+                                name as emoji,
+                                case
+                                    when 
+                                        (
+                                            id = (select min(id) from rps_type) 
+                                            AND ? = (select max(id) from rps_type)
+                                        )
+                                        OR
+                                        (
+                                            id - 1 = ?
+                                        ) 
+                                        then 'You Won!'
+                                    when id = ?
+                                        then 'It''s a Tie.'
+                                    else
+                                        'Sorry, You Lost.'
+                                end as result
+                        from 
+                                rps_type 
+                        where
+                                use = 1
+                        order by 
+                                random() 
+                        limit 1
+                        ;
+                    `,
+                    // "select 'x'",
+                    [guess, guess, guess],
+                    (err, row) => {
+                        if(err)
+                            reject(err);
+                        resolve(row);
                     }
                 );
             }
