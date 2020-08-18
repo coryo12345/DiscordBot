@@ -1,0 +1,12 @@
+{
+    "id": "rogue",
+    "default_level": 1,
+    "base_health": 8,
+    "base_attack": 2,
+    "base_defense": 1,
+    "skils": [],
+    "default_weapon": {
+        "id": "shortsword",
+        "variant": ""
+    }
+}

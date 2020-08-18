@@ -1,0 +1,12 @@
+{
+    "id": "shortsword",
+    "base_health": 0,
+    "base_attack": 1,
+    "base_defense": 0,
+    "skills": [],
+    "variants": [
+        "",
+        "broken",
+        "sharpened"
+    ]
+}

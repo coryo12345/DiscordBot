@@ -1,0 +1,12 @@
+{
+    "id": "knight",
+    "default_level": 1,
+    "base_health": 10,
+    "base_attack": 1,
+    "base_defense": 1,
+    "skils": [],
+    "default_weapon": {
+        "id": "shortsword",
+        "variant": ""
+    }
+}
