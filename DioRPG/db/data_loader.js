@@ -1,6 +1,6 @@
 var path = require('path');
 var fs = require('fs');
-const data_path = path.resolve(__dirname, './data/');
+const data_path = path.resolve(__dirname, '../data/');
 const EXTENSION = '.json'
 
 module.exports = class DB_Handler {

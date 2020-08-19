@@ -2,7 +2,7 @@ const Discord = require('discord.js');
 const token = process.env.DISCORD_BOT_SECRET;
 var path = require('path');
 var sqlite3 = require('sqlite3').verbose();
-var DB_Handler = require('./DB_Handler');
+var DB_Handler = require('./db/DB_Handler');
 var db = new DB_Handler(new sqlite3.Database(path.resolve('./data.db')));
 db.initdb();
 var RPG = require('./game/RPG');
@@ -31,7 +31,7 @@ client.on('message', async message => {
             else if (message.cleanContent.toLowerCase().indexOf('classes') >= 0) {
                 rpg.listClasses(message);
             }
-            else if (message.cleanContent.toLowerCase().indexOf('status') >= 0 || message.mentions.users.has(client.user.id)) {
+            else if (message.cleanContent.toLowerCase().indexOf('status') >= 0 || message.cleanContent.toLowerCase().indexOf('character') >= 0) {
                 rpg.status(message);
             }
             else if (message.cleanContent.toLowerCase().indexOf('battle') >= 0 || message.cleanContent.toLowerCase().indexOf('fight') >= 0) {

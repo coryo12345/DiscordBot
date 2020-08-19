@@ -90,7 +90,7 @@ Attack: ${cl.base_attack}\`\`\``;
                             else {
                                 this.battle.newBattle(message.author.id, char.level)
                                     .then(() => {
-                                        this.battleStatus(message, startIfEnded);
+                                        this.battleStatus(message, false);
                                     })
                             }
                         }
@@ -98,10 +98,14 @@ Attack: ${cl.base_attack}\`\`\``;
                         else {
                             message.channel.send(
                                 `<@${message.author.id}> you are currently fighting:
-\`\`\`
 Level ${row.monster_level} ${row.monster_id}
 Health: ${row.health} / ${row.max_health}
 Effects: ${row.status_effect_id || 'none'}
+\`\`\`
+WEAPON: ${('' + row.variant_id + ' ' + row.weapon_id).trim()}
+Health bonus: ${row.weapon_health}
+Defense bonus: ${row.weapon_defense}
+Attack bonus: ${row.weapon_attack}
 \`\`\``                     )
                         }
                     });
