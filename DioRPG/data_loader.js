@@ -13,6 +13,8 @@ module.exports = class DB_Handler {
         this._weapons(path.resolve(data_path, 'weapons/'));
         // classes & default weapons
         this._classes(path.resolve(data_path, 'classes/'));
+        // monsters
+        this._monsters(path.resolve(data_path, 'monsters/'));
     }
 
     _weapons = (folder) => {
@@ -102,6 +104,27 @@ module.exports = class DB_Handler {
                     cl.default_weapon.id,
                     cl.default_weapon.variant,
                 ]);
+            }
+        });
+    }
+
+    _monsters = (folder) => {
+        this.db.serialize(() => {
+            this._truncate('monsters');
+            let files = _listFiles(folder, EXTENSION)
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                let m = require(file);
+                this.db.run(`
+                    INSERT INTO monsters (id, health_constant, attack, defense) VALUES
+                    (?, ?, ?, ?)
+                `,
+                    [
+                        m.id,
+                        m.health_constant,
+                        m.attack,
+                        m.defense
+                    ]);
             }
         });
     }

@@ -1,0 +1,7 @@
+{
+    "id": "orc",
+    "health_constant": 1.3,
+    "attack": 3,
+    "defense": 2,
+    "skills": []
+}

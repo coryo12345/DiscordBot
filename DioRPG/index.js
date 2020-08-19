@@ -5,7 +5,7 @@ var sqlite3 = require('sqlite3').verbose();
 var DB_Handler = require('./DB_Handler');
 var db = new DB_Handler(new sqlite3.Database(path.resolve('./data.db')));
 db.initdb();
-var RPG = require('./RPG');
+var RPG = require('./game/RPG');
 
 // Create an instance of a Discord client
 const client = new Discord.Client();
@@ -31,11 +31,20 @@ client.on('message', async message => {
             else if (message.cleanContent.toLowerCase().indexOf('classes') >= 0) {
                 rpg.listClasses(message);
             }
+            else if (message.cleanContent.toLowerCase().indexOf('status') >= 0 || message.mentions.users.has(client.user.id)) {
+                rpg.status(message);
+            }
+            else if (message.cleanContent.toLowerCase().indexOf('battle') >= 0 || message.cleanContent.toLowerCase().indexOf('fight') >= 0) {
+                rpg.battleStatus(message, true);
+            }
         }
         // in a Guild channel
         else if (message.mentions.users.has(client.user.id) && message.channel.type === 'text') {
             if (message.cleanContent.toLowerCase().indexOf('classes') >= 0) {
                 rpg.listClasses(message);
+            }
+            else if (message.cleanContent.toLowerCase().indexOf('battle') >= 0 || message.cleanContent.toLowerCase().indexOf('fight') >= 0) {
+                rpg.battleStatus(message, false);
             }
             else {
                 rpg.status(message);

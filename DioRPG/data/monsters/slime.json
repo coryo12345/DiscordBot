@@ -1,0 +1,7 @@
+{
+    "id": "slime",
+    "health_constant": 0.9,
+    "attack": 1,
+    "defense": 1,
+    "skills": []
+}
