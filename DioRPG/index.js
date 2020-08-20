@@ -8,7 +8,7 @@ db.initdb();
 var RPG = require('./game/RPG');
 
 // Create an instance of a Discord client
-const client = new Discord.Client();
+const client = new Discord.Client({ partials: ['MESSAGE', 'REACTION'] });
 
 // Game logic handler 
 var rpg = new RPG(client, db);
@@ -53,6 +53,13 @@ client.on('message', async message => {
     } catch (err) {
         console.error(err);
     }
+});
+
+client.on('messageReactionAdd', async (reaction, user) => {
+    if (user.bot === true) return;
+    if (reaction.message.partial) await reaction.message.fetch();
+    if (reaction.partial) await reaction.fetch();
+    // if message_id and user_id in 1 row in db -> apply changes
 });
 
 client.login(token);

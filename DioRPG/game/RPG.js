@@ -1,10 +1,12 @@
 var Battle = require('./Battle');
+var TurnHandler = require('./TurnHandler');
 
 module.exports = class RPG {
     constructor(client, db) {
         this.client = client;
         this.db = db;
         this.battle = new Battle(this.db);
+        this.turnh = new TurnHandler(this.db);
     }
 
     status = (message) => {
@@ -107,6 +109,9 @@ Health bonus: ${row.weapon_health}
 Defense bonus: ${row.weapon_defense}
 Attack bonus: ${row.weapon_attack}
 \`\`\``                     )
+                            if (startIfEnded) {
+                                this.turnh.showTurnOptions(message);
+                            }
                         }
                     });
             });

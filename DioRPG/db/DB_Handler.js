@@ -112,4 +112,34 @@ module.exports = class DB_Handler {
         });
     }
 
+    newTurn = (user_id, message_id, actions) => {
+        var th = this;
+        return new Promise(function (resolve, reject) {
+            th.db.serialize(function () {
+                th.db.run(
+                    'DELETE FROM input_messages WHERE user_id = ?;',
+                    [user_id],
+                    (err) => {
+                        if (err) reject(err);
+                    }
+                );
+                
+                actions.forEach(action => {
+                    th.db.run(`
+                        INSERT INTO input_messages (user_id, message_id, reaction, action, parameter1) VALUES
+                        ($user_id, $message_id, $reaction, $action, $param1);
+                    `,
+                    {
+                        $user_id: user_id,
+                        $message_id: message_id,
+                        $reaction: action.emoji,
+                        $action: action.action,
+                        $param1: action.parameter1
+                    });
+                });
+            });
+        });
+
+    }
+
 }

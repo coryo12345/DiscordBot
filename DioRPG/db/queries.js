@@ -101,7 +101,19 @@ module.exports = {
         LEFT JOIN
                 variants v
                 ON c.variant_id = v.id 
-        ;`,
+        ;
+        
+        CREATE TABLE IF NOT EXISTS input_messages (
+            user_id VARCHAR,
+            message_id VARCHAR,
+            reaction VARCHAR,
+            action VARCHAR NOT NULL,
+            parameter1 VARCHAR,
+            parameter2 VARCHAR,
+            parameter3 VARCHAR,
+            PRIMARY KEY (user_id, message_id, reaction)
+        );
+        `,
 
     genBattle: `
         INSERT INTO battle
@@ -127,11 +139,11 @@ module.exports = {
             limit 1 
         )
         SELECT
-                ? "user_id", -- user_id
+                ? "user_id",
                 mons.id,
-                ? "monster_level", -- monster_level
-                round(? * mons.health_constant) + mons.weapon_health "health", 	-- monster_level
-                round(? * mons.health_constant) + mons.weapon_health "max_health", -- monster_level
+                ? "monster_level",
+                round(? * mons.health_constant) + mons.weapon_health "health",
+                round(? * mons.health_constant) + mons.weapon_health "max_health",
                 NULL "status_effect",
                 mons.weapon_id,
                 mons.variant_id,
