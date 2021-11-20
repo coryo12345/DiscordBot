@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "export $(cat .env | xargs) && node index.js"
+    "start": "node index.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "discord.js": "^12.1.1",
+    "dotenv": "^10.0.0",
     "sqlite3": "^4.2.0"
   }
 }
