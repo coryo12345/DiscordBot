@@ -1,3 +1,6 @@
+// set up env variables
+require('dotenv').config();
+
 const Discord = require('discord.js');
 const token = process.env.DISCORD_BOT_SECRET;
 const path = require('path');
@@ -13,8 +16,6 @@ const template_name_open_tag = "<span>";
 const template_name_close_tag = "</span>";
 const template_date_tag = '<span class="date">';
 
-const me = "698278298735870044";
-
 client.on('ready', () => {
     console.log('I am ready!');
     console.log(`ID: ${client.user.username}`);
@@ -28,7 +29,7 @@ client.on('message', async message => {
         if (message.author.bot) return;
 
         message.mentions.users.each(user => {
-            if (user.id.toString() === me){
+            if (user.id.toString() === client.user.id){
                 archive(message);
             }
         });
@@ -59,7 +60,7 @@ async function archive(message) {
             good = true;
         }
     });
-    if (!good && false) {
+    if (!good && false) { // disable check for now
         channel.send("Sorry. You're not an approved user.");
         return;
     }
